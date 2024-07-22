@@ -13,7 +13,25 @@ passaggi da seguire:
         creo hashmap che ha come chiave il nome dell'ingrediente e come valore un puntatore al min-heap che gesisce le quantità (vedi foglio).
             Inserimento: L'elemento viene aggiunto alla fine dell'heap e viene applicato l'heapify up per mantenere la proprietà del min-heap.
             Estrazione: L'elemento con la data di scadenza minima viene rimosso e viene applicato l'heapify down per mantenere la proprietà del min-heap.
-    */
+        --> se la dimensione dell'array viene sforata bisogna fare una realloc e ricollocare tutto l'array con complessità O(N)
+        --> non so come gestire le collisioni nell'hashmap
+
+    GESTIONE RICETTE: 
+        nell'ultimo test ci sono 1558 ricette quindi un hashmap con 2000 elementi potrebbe andare bene.
+        chiave dell'hashmap è il nome della ricetta e il valore è un altra mappa che associa ciascun ingrediente a un valore
+
+    GESTIONE ORDINI: 
+        coda FIFO, orine piu recente viene elaborato e se eseguito viene messo in ordini eseguiti e i materiali vengono rimossi dal magazzino.
+        se l'ordine non puo essere eseguito viene messo in un altra lista FIFO per gli ordini in attesa
+        
+
+
+
+
+
+
+
+*/
 
 
 
