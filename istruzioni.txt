@@ -1,7 +1,7 @@
 5 325
-aggiungi_ricetta 
-aggiungi_ricetta 
-aggiungi_ricetta 
+aggiungi_ricetta pane
+aggiungi_ricetta pene
+aggiungi_ricetta pine
 rimuovi_ricetta 
 rifornimento
 ordine 

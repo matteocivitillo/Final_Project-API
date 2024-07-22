@@ -34,13 +34,33 @@ passaggi da seguire:
 */
 
 
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-void aggiungi_ricetta();
+#define HASH_TABLE_LEN 2081
+#define MAX_NAME_LEN 256
+
+typedef struct ingrediente {
+    char nome_ingrediente[MAX_NAME_LEN];
+    int q;
+    struct ingrediente* next;
+} Ingrediente; 
+
+typedef struct ricetta {
+    char nome_ricetta[MAX_NAME_LEN];
+    Ingrediente* ingredienti_ricetta;
+    struct ricetta* prossima_ricetta;
+} Ricetta;
+
+typedef struct hashTable{
+    Ricetta* table[HASH_TABLE_LEN];
+} HashTable;
+
+
+unsigned int hash(char*);
+HashTable* crea_hashTable();
+void aggiungi_ricetta(char nome_ricetta, char ingredienti);
 void rimuovi_ricetta();
 void ordine();
 void rifornimento();
@@ -61,8 +81,12 @@ int main (){
     while (fscanf(fp, "%s", &stringa)!= EOF){
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
+            char nome_ricetta[255];
+            //inserisci stringa per tutti gli altri ingredienti
+            fscanf(fp, "%s",&nome_ricetta);
+            //acquisisci il resto degli ingredienti
             //prendi parametri e chiama aggiungi ricetta
-            printf("aggiungi_ricetta\n");
+            printf("aggiungi_ricetta %s\n", nome_ricetta);
 
         }
 
@@ -82,9 +106,30 @@ int main (){
     }
     fclose(fp);
     return 0;
+}
 
 
-    {
+unsigned int hash(char *str) {
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+
+    return hash % HASH_TABLE_LEN;
+}
+
+
+HashTable* crea_hashTable(){
+    HashTable* ht = (HashTable*) malloc(sizeof(HashTable));
+    for (int i=0; i< HASH_TABLE_LEN; i++){
+        ht->table[i]= NULL;
+    }
+    return ht;
+}
+
+
         //aggiorna tempo corrente--> forse non conviene scartare subito i prodotti scaduti ma conviene 
         //lasciarli dove sono e quando vengono incontrati in seguito si verifica se sono da scartare
         
@@ -92,7 +137,3 @@ int main (){
         chiama una delle seguenti funzioni e modifica le strutture dati:
 
         */
-    }
-    
-
-}
