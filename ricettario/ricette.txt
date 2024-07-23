@@ -5,3 +5,6 @@ rimuovi_ricetta sfogliatella
 rimuovi_ricetta profiterole
 aggiungi_ricetta pane_dolce farina 1 zucchero 1 uova 1
 aggiungi_ricetta torta farina 50
+aggiungi_ricetta aar farina 50 uova 10
+aggiungi_ricetta abr farina 50 uova 10
+aggiungi_ricetta acr farina 50 uova 10 

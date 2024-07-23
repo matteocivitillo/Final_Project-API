@@ -1,8 +1,10 @@
-5 325
-aggiungi_ricetta pane
-aggiungi_ricetta pene
-aggiungi_ricetta pine
-rimuovi_ricetta 
-rifornimento
-ordine 
-ordine 
+aggiungi_ricetta torta farina 50 uova 10 zucchero 20
+aggiungi_ricetta ciambella farina 20 uova 5 burro 2
+aggiungi_ricetta profiterole farina 10 uova 2 latte 3 zucchero 3 cioccolato 4
+rimuovi_ricetta sfogliatella
+rimuovi_ricetta profiterole
+aggiungi_ricetta pane_dolce farina 1 zucchero 1 uova 1
+aggiungi_ricetta torta farina 50
+aggiungi_ricetta aar farina 50 uova 10
+aggiungi_ricetta abr farina 50 uova 10
+aggiungi_ricetta acr farina 50 uova 10 

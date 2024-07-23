@@ -22,19 +22,20 @@ typedef struct ricetta {
 
 typedef struct hashTable{
     Ricetta* table[HASH_TABLE_LEN];
-} HashTable;
+} HashTable_r;
 
 
 //prototipo funzioni hash_table
 unsigned int hash(char*);
-HashTable* crea_hashTable();
+HashTable_r* crea_hashTable();
 int trova_ricetta(char*);
 void inserisci_ricetta(char*, Ingrediente*);
 void rimuovi_ricetta(char*);
+void stampa_hashTable();
 
 
 //variabili globali
-HashTable* ht;
+HashTable_r* ht_r;
 int frequenza_camion=0; 
 int capienza_camion=0;
 int istante=0;
@@ -50,7 +51,7 @@ int main (){
     fscanf(fp,"%d", &frequenza_camion);
     fscanf(fp,"%d", &capienza_camion);
     char stringa[100];
-    ht= crea_hashTable();
+    ht_r= crea_hashTable();
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", &stringa)!= EOF){
 
@@ -84,8 +85,6 @@ int main (){
                 
             }
             inserisci_ricetta(nome_ricetta, primo); 
-            printf("aggiunta ricetta: %s\n", nome_ricetta);
-
         }
 
         else if(strcmp(stringa, "rimuovi_ricetta")==0){
@@ -105,6 +104,7 @@ int main (){
 
         istante++;
     }
+    stampa_hashTable();
     fclose(fp);
     return 0;
 }
@@ -125,8 +125,8 @@ unsigned int hash(char *str) {
 }
 
 
-HashTable* crea_hashTable(){
-    HashTable* ht= (HashTable*)malloc(sizeof(HashTable));
+HashTable_r* crea_hashTable(){
+    HashTable_r* ht= (HashTable_r*)malloc(sizeof(HashTable_r));
     for (int i=0; i< HASH_TABLE_LEN; i++){
         ht->table[i]= NULL;
     }
@@ -142,16 +142,27 @@ void inserisci_ricetta(char* nome, Ingrediente* ingredienti){
     }    
     Ricetta* nuova_ricetta= (Ricetta*) malloc(sizeof(Ricetta));
     strcpy(nuova_ricetta->nome_ricetta, nome); //copio il nome
+    Ingrediente* current = ingredienti; 
+    int counter=0;
+    while (current!=NULL)
+    {
+        counter+= current->q;
+        current=current->prossimo_ing;
+    }
+    nuova_ricetta->counter=counter;
     nuova_ricetta->ingredienti_ricetta=ingredienti; //passo il puntatore
     //inserimento in testa
-    nuova_ricetta->prossima_ricetta=ht->table[val_hash];
-    ht->table[val_hash]= nuova_ricetta;
+    nuova_ricetta->prossima_ricetta=ht_r->table[val_hash];
+    ht_r->table[val_hash]= nuova_ricetta;  
+    
+    printf("aggiunta ricetta: %s, con peso %d\n", nuova_ricetta->nome_ricetta, nuova_ricetta->counter );
+
 }
 
 
 int trova_ricetta(char* nome) {
     unsigned int val_hash = hash(nome);
-    Ricetta* ricetta = ht->table[val_hash];
+    Ricetta* ricetta = ht_r->table[val_hash];
     while (ricetta != NULL) {
         if(strcmp(ricetta->nome_ricetta, nome) == 0 ){
             return 1; 
@@ -164,7 +175,7 @@ int trova_ricetta(char* nome) {
 
 void rimuovi_ricetta(char* nome){
     unsigned int val_hash=hash (nome);
-    Ricetta* current = ht->table[val_hash];
+    Ricetta* current = ht_r->table[val_hash];
     Ricetta* prec=NULL;
     while (current != NULL&& strcmp(current->nome_ricetta, nome)!=0)
     {
@@ -182,12 +193,29 @@ void rimuovi_ricetta(char* nome){
     }
     else if(prec == NULL){
         //sono in testa alla lista
-        ht->table[val_hash]=current->prossima_ricetta;
+        ht_r->table[val_hash]=current->prossima_ricetta;
         free(current);
         return;
     } else {
         prec->prossima_ricetta= current->prossima_ricetta;
         free(current);
         return;
-    }    
+    } 
+       
+}
+void stampa_hashTable(){
+    for (int i = 0; i < HASH_TABLE_LEN; i++) {
+        if (ht_r->table[i] != NULL) {
+            Ricetta* ricetta = ht_r->table[i];
+            while (ricetta != NULL) {
+                printf("Index %d: %s\n", i, ricetta->nome_ricetta);
+                Ingrediente* ingrediente = ricetta->ingredienti_ricetta;
+                while (ingrediente != NULL) {
+                    printf("  Ingrediente: %s, Quantità: %d\n", ingrediente->nome_ingrediente, ingrediente->q);
+                    ingrediente = ingrediente->prossimo_ing;
+                }
+                ricetta = ricetta->prossima_ricetta;
+            }
+        }
+    }
 }
