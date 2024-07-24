@@ -61,6 +61,12 @@ HashNode* creaNodoHash (char*, MinHeap*);
 void inserisci_in_table(HashTable*, char*, MinHeap*);
 MinHeap* getHeap (HashTable*, char*);
 
+//debug
+void stampaHashTable(HashTable*);
+void stampaHeap(MinHeap*);
+void rimuovi_scaduti(MinHeap*, int);
+int processa_ordine(HashTable*, char*, int);
+
 
 int istante=0;
 
@@ -86,7 +92,20 @@ int main (){
         }
 
         else if(strcmp(stringa, "ordine")==0){
-            printf("ordine\n");
+            
+            char ingrediente[MAX_NAME_LEN];
+            int quantita;
+            fscanf(fp, "%s%d", ingrediente, &quantita);
+            printf("ordine di %s, quantità %d\n", ingrediente, quantita);
+            
+            if(processa_ordine(magazzino, ingrediente, quantita)) {
+                printf("Ordine di %d unità di %s evaso.\n", quantita, ingrediente);
+            } else {
+                printf("Ordine di %d unità di %s non evaso (quantità insufficiente).\n", quantita, ingrediente);
+            }
+            
+            
+
         }
 
         else if(strcmp(stringa, "rifornimento")==0){
@@ -108,6 +127,7 @@ int main (){
 
         istante++;
     }
+    stampaHashTable(magazzino);
     fclose(fp);
     //non so se servono
     for (int i = 0; i < magazzino->cap_table; i++) {
@@ -172,7 +192,6 @@ void heapifyUp(MinHeap* minHeap, int indice){
 }
 
 
-//controlla se non serve else if
 void heapifyDown (MinHeap* minHeap, int indice){
     int minore= indice;
     int sx= figlio_sx(indice);
@@ -230,14 +249,14 @@ HashTable* creaHashTable (int cap){
 
 HashNode* creaNodoHash (char* chiave, MinHeap* valore){
     HashNode* nuovo_nodo=(HashNode*) malloc (sizeof(HashNode));
-    nuovo_nodo->chiave= chiave; //newNode->key = strdup(key);
+    nuovo_nodo->chiave= strdup(chiave); //newNode->key = strdup(key);
     nuovo_nodo->valore=valore;
     nuovo_nodo->next=NULL;
     return nuovo_nodo;
 }
 //fare  nuovo_nodo->chiave= chiave; potrebbe dare problemi, nel caso fare newNode->key = strdup(key);
 //e implementare strdup come : 
-/*
+
 char* strdup(const char* s) {
     size_t len = strlen(s) + 1;
     char* new_s = (char*) malloc(len);
@@ -245,7 +264,7 @@ char* strdup(const char* s) {
     memcpy(new_s, s, len);
     return new_s;
 }
-*/
+
 
 void inserisci_in_table(HashTable* hashtable, char* chiave , MinHeap* valore){
     unsigned long val_hash =hash(chiave);
@@ -275,4 +294,61 @@ MinHeap* getHeap (HashTable* hashtable, char* chiave){
         nodo=nodo->next;
     }
     return NULL;
+}
+
+
+//funzioni di debug
+void stampaHeap(MinHeap* heap) {
+    if (heap == NULL) {
+        printf("Heap is NULL\n");
+        return;
+    }
+    printf("Heap size: %d\n", heap->size);
+    for (int i = 0; i < heap->size; i++) {
+        printf("Scadenza: %d, Quantita: %d\n", heap->array[i].scadenza, heap->array[i].q);
+    }
+}
+
+void stampaHashTable(HashTable* hashtable) {
+    if (hashtable == NULL) {
+        printf("HashTable is NULL\n");
+        return;
+    }
+    for (int i = 0; i < hashtable->cap_table; i++) {
+        HashNode* node = hashtable->puntatore_array[i];
+        if (node == NULL) continue;
+        printf("Indice: %d\n", i);
+        while (node != NULL) {
+            printf("Ingrediente: %s\n", node->chiave);
+            stampaHeap(node->valore);
+            node = node->next;
+        }
+    }
+}
+
+void rimuovi_scaduti(MinHeap* heap, int istante) {
+    while(heap->size > 0 && heap->array[0].scadenza <= istante) {
+        minimo(heap);
+    }
+}
+
+int processa_ordine(HashTable* magazzino, char* ingrediente, int quantita) {
+    MinHeap* heap = getHeap(magazzino, ingrediente);
+    if(!heap) return 0;
+
+    rimuovi_scaduti(heap, istante);
+    
+    int totale = 0;
+    while(heap->size > 0 && totale < quantita) {
+        Nodo_heap min = minimo(heap);
+        if(totale + min.q <= quantita) {
+            totale += min.q;
+        } else {
+            min.q -= (quantita - totale);
+            totale = quantita;
+            inserisci_in_heap(heap, min.scadenza, min.q);
+        }
+    }
+    
+    return totale >= quantita;
 }
