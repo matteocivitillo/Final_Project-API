@@ -95,6 +95,20 @@ typedef struct hashtable {
     int size;
 } HashTable;
 
+//Struct ordini
+typedef struct ordine{
+    char nome_ricetta[MAX_NAME_LEN];
+    int q;
+    int istante;
+    struct ordine* next;
+} Ordine;
+
+typedef struct coda{
+    Ordine* primo_ord;
+    Ordine* ultimo_ord;
+    int size;
+} Coda;
+
 //prototipo funzioni ricettario
 unsigned int hash(char*);
 HashTable_r* crea_hashTable();
@@ -118,8 +132,8 @@ HashNode* creaNodoHash (char*, MinHeap*);
 void inserisci_in_table(HashTable*, char*, MinHeap*);
 MinHeap* getHeap (HashTable*, char*);
 
-void ordine();
-void rifornimento();
+//prototipo funzioni ordini
+Coda* crea_coda();
 
 //variabili globali
 int frequenza_camion=0; 
