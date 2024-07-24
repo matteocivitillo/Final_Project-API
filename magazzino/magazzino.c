@@ -78,7 +78,7 @@ int main (){
     }
     HashTable* magazzino = creaHashTable(HASH_TABLE_M_LEN);
     
-    char stringa[256];
+    char stringa[MAX_NAME_LEN];
 
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
