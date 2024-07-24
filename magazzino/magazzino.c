@@ -17,7 +17,8 @@
 #include <string.h>
 
 #define MAX_NAME_LEN 256
-#define INITIAL_CAPACITY
+#define CAP_INIZIALE 128
+#define HASH_TABLE_M_LEN 10007
 
 //struct magazzino
 
@@ -27,24 +28,54 @@ typedef struct nodo_heap {
 } Nodo_heap;
 
 typedef struct minHeap{
-    Nodo_heap *array;
+    Nodo_heap* array;
     int size;
-    int cap;
+    int cap_heap;
 } MinHeap;
 
+typedef struct hashNode{
+    char* chiave;
+    MinHeap* valore;
+    struct hashNode* next;
+} HashNode;
+
+typedef struct hashtable {
+    HashNode** puntatore_array;
+    int cap_table;
+    int size;
+} HashTable;
+
+//prototipi funzioni
+unsigned int hash (char*);
+MinHeap* creaHeap (int);
+void swap(Nodo_heap*, Nodo_heap*);
+int padre(int);
+int figlio_sx(int);
+int figlio_dx(int);
+void heapifyUp(MinHeap*, int);
+void heapifyDown(MinHeap*, int);
+void inserisci_in_heap(MinHeap*, int, int);
+Nodo_heap minimo(MinHeap*);
+HashTable* creaHashTable (int);
+HashNode* creaNodoHash (char*, MinHeap*);
+void inserisci_in_table(HashTable*, char*, MinHeap*);
+MinHeap* getHeap (HashTable*, char*);
 
 
 int istante=0;
 
 int main (){
-    FILE *fp= fopen("istruzioni.txt", "r");
+    FILE *fp= fopen("magazzino.txt", "r");
     if(fp==NULL){
         printf("errore nell'apertura del file");
         return 1;
     }
-    char stringa[100];
+    HashTable* magazzino = creaHashTable(HASH_TABLE_M_LEN);
+    
+    char stringa[256];
+
     //ciclo while che finche il file contiene stringhe continua a leggere
-    while (fscanf(fp, "%s", &stringa)!= EOF){
+    while (fscanf(fp, "%s", stringa)!= EOF){
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
             printf("aggiunta ricetta\n");
@@ -59,12 +90,189 @@ int main (){
         }
 
         else if(strcmp(stringa, "rifornimento")==0){
-            printf("rifornimento\n");
-            //completare questa parte 
+            char ingrediente [MAX_NAME_LEN];
+            int quantita; 
+            int scadenza;
+            while (fscanf (fp, "%s%d%d", ingrediente, &quantita, &scadenza)==3)
+            {
+                MinHeap* heap =getHeap(magazzino, ingrediente);
+                if(heap==NULL) {
+                    heap=creaHeap(CAP_INIZIALE);
+                    inserisci_in_table(magazzino, ingrediente, heap);
+                }
+                inserisci_in_heap(heap, scadenza, quantita);
+                printf("Rifornito %s con %d unità, scadenza %d\n", ingrediente, quantita, scadenza);
+            }
+            
         }
 
         istante++;
     }
     fclose(fp);
+    //non so se servono
+    for (int i = 0; i < magazzino->cap_table; i++) {
+        HashNode *node = magazzino->puntatore_array[i];
+        while (node) {
+            HashNode *temp = node;
+            node = node->next;
+            free(temp->chiave);
+            free(temp->valore->array);
+            free(temp->valore);
+            free(temp);
+        }
+    }
+    free(magazzino->puntatore_array);
+    free(magazzino);
+
     return 0;
+}
+
+
+
+//funzioni
+unsigned int hash(char* nome) {
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *nome++)) {
+        hash = hash * 33 + c;
+    }
+    return hash % HASH_TABLE_M_LEN;
+}
+
+MinHeap* creaHeap (int cap){
+    MinHeap *minHeap= (MinHeap*) malloc(sizeof(MinHeap));
+    minHeap->size=0;
+    minHeap->cap_heap=cap;
+    minHeap->array=(Nodo_heap*) malloc (cap*sizeof(Nodo_heap)); //grandezza= num nodi * gradezza nodo
+    return minHeap;
+}
+
+void swap (Nodo_heap* a, Nodo_heap* b){
+    Nodo_heap temp= *a; //assegna a temp il puntatore ad a
+    *a=*b; //il puntatore ad a ora punta a b
+    *b =temp; //il puntatore a b ora è temp quindi punta al vecchio a
+}
+
+int padre(int i){
+    return (i-1)/2; 
+}
+int figlio_sx(int i){
+    return (2*i +1);
+}
+int figlio_dx(int i){
+    return (2*i +2);
+}
+
+void heapifyUp(MinHeap* minHeap, int indice){
+    while (indice!=0 && minHeap->array[padre(indice)].scadenza > minHeap->array[indice].scadenza)
+    {
+        swap (&minHeap->array[indice], &minHeap->array[padre(indice)]);
+        indice = padre(indice);
+    }  
+}
+
+
+//controlla se non serve else if
+void heapifyDown (MinHeap* minHeap, int indice){
+    int minore= indice;
+    int sx= figlio_sx(indice);
+    int dx= figlio_dx(indice);
+    if(sx < minHeap->size && minHeap->array[sx].scadenza < minHeap->array[minore].scadenza){
+        minore=sx;
+    }
+    if(dx < minHeap->size && minHeap->array[dx].scadenza < minHeap->array[minore].scadenza){
+        minore=dx;  //non devo mettere un else?
+    }
+    if(minore != indice){
+        swap(&minHeap->array[indice], &minHeap->array[minore]);
+        heapifyDown(minHeap, minore);
+    }
+
+}
+
+void inserisci_in_heap(MinHeap* minHeap, int scadenza , int q){
+    if(minHeap->size==minHeap->cap_heap){
+        minHeap->cap_heap*=2;
+        minHeap->array=(Nodo_heap* ) realloc(minHeap->array, minHeap->cap_heap * sizeof(Nodo_heap));
+
+    }
+    int indice = minHeap->size++;
+    minHeap->array[indice].scadenza=scadenza;
+    minHeap->array[indice].q=q;
+    heapifyUp(minHeap, indice);
+
+}
+
+Nodo_heap minimo(MinHeap* minHeap){
+    if(minHeap->size==1){
+        minHeap->size--;
+        return minHeap->array[0];
+    }
+    Nodo_heap testa = minHeap->array[0];
+    minHeap->array[0]= minHeap->array[(minHeap->size)-1];
+    minHeap->size--;
+    heapifyDown(minHeap, 0);
+    return testa;
+
+}
+
+HashTable* creaHashTable (int cap){
+    HashTable* hashtable =(HashTable*) malloc (sizeof(HashTable));
+    hashtable->cap_table= cap;
+    hashtable->size=0;
+    hashtable->puntatore_array = (HashNode**) calloc(cap, sizeof(HashNode*));
+    for (int i = 0; i < cap; i++)   
+    {
+        hashtable->puntatore_array[i]=NULL;
+    }
+    return hashtable;
+}
+
+HashNode* creaNodoHash (char* chiave, MinHeap* valore){
+    HashNode* nuovo_nodo=(HashNode*) malloc (sizeof(HashNode));
+    nuovo_nodo->chiave= chiave; //newNode->key = strdup(key);
+    nuovo_nodo->valore=valore;
+    nuovo_nodo->next=NULL;
+    return nuovo_nodo;
+}
+//fare  nuovo_nodo->chiave= chiave; potrebbe dare problemi, nel caso fare newNode->key = strdup(key);
+//e implementare strdup come : 
+/*
+char* strdup(const char* s) {
+    size_t len = strlen(s) + 1;
+    char* new_s = (char*) malloc(len);
+    if (new_s == NULL) return NULL;
+    memcpy(new_s, s, len);
+    return new_s;
+}
+*/
+
+void inserisci_in_table(HashTable* hashtable, char* chiave , MinHeap* valore){
+    unsigned long val_hash =hash(chiave);
+    HashNode* nuovo_nodo = creaNodoHash(chiave, valore);
+    if(hashtable->puntatore_array[val_hash]==NULL){
+        hashtable->puntatore_array[val_hash]=nuovo_nodo;
+    } else {
+        HashNode* temp= hashtable->puntatore_array[val_hash];
+        while (temp->next!=NULL)   
+        {
+            temp=temp->next;
+        }
+        temp->next=nuovo_nodo;    
+    }
+    hashtable->size++;
+}
+
+
+MinHeap* getHeap (HashTable* hashtable, char* chiave){
+    unsigned long val_hash = hash (chiave);
+    HashNode* nodo = hashtable->puntatore_array[val_hash];
+    while (nodo!= NULL)
+    {
+        if(strcmp(nodo->chiave, chiave)==0){
+            return nodo->valore;
+        }
+        nodo=nodo->next;
+    }
+    return NULL;
 }

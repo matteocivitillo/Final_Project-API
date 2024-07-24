@@ -16,6 +16,9 @@ passaggi da seguire:
         --> se la dimensione dell'array viene sforata bisogna fare una realloc e ricollocare tutto l'array con complessità O(N)
         --> non so come gestire le collisioni nell'hashmap
 
+        dimensione iniziale ottimale heap=128 e quando sfora realloc
+        mediamente sono presenti 8500 ingredienti diversi --> quindi hash table di 10007 elementi
+
     GESTIONE RICETTE: 
         nell'ultimo test ci sono 1558 ricette quindi un hashmap con 2081 elementi potrebbe andare bene.
         chiave dell'hashmap è il nome della ricetta e il valore è un altra mappa che associa ciascun ingrediente a un valore
@@ -93,10 +96,10 @@ int main (){
     }
     fscanf(fp,"%d", &frequenza_camion);
     fscanf(fp,"%d", &capienza_camion);
-    char stringa[100];
+    char stringa[MAX_NAME_LEN];
     ht_r=crea_hashTable();
     //ciclo while che finche il file contiene stringhe continua a leggere
-    while (fscanf(fp, "%s", &stringa)!= EOF){
+    while (fscanf(fp, "%s", stringa)!= EOF){
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
@@ -106,7 +109,7 @@ int main (){
             char nome_ingrediente[MAX_NAME_LEN];
             int q;
 
-            while(fscanf(fp, "%s", &nome_ingrediente)==1){
+            while(fscanf(fp, "%s", nome_ingrediente)==1){
                 fscanf(fp,"%d", &q);
                 Ingrediente* nuovo_ingrediente= (Ingrediente*)malloc(sizeof(Ingrediente));
                 strcpy(nuovo_ingrediente->nome_ingrediente, nome_ingrediente);
