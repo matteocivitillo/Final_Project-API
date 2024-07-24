@@ -38,6 +38,7 @@ passaggi da seguire:
 
     RITIRO E CONSEGNA ORDINI: 
         scelgo ordini da consegnare in base all'ordine nella coda FIFO di ordini completati e li inserisco ordinati in base al peso in una lista ordini da spedire che poi stampo
+        ricordarsi di decrementare il counter di una ricetta quando si inserisce l'ordine nel camion
 */
 
 
@@ -134,12 +135,22 @@ MinHeap* getHeap (HashTable*, char*);
 
 //prototipo funzioni ordini
 Coda* crea_coda();
+void enqueue(Coda*, char*, int, int);
+Ordine* dequeue(Coda*);
+void rimuovi_scaduti(MinHeap* , int );
+int processa_ordine(HashTable* , char* , int );
+int verifica_ordine(HashTable* , Ricetta* , int);
+void ordine(HashTable* , Coda* , Coda* , char* , int );
+
+
 
 //variabili globali
 int frequenza_camion=0; 
 int capienza_camion=0;
 int istante=0;
 HashTable_r* ht_r;
+Coda* ordini_in_attesa;
+Coda* ordini_completati;
 
 
 int main (){
@@ -200,7 +211,11 @@ int main (){
         }
 
         else if(strcmp(stringa, "ordine")==0){
-            printf("ordine\n");
+            char nome_ricetta[MAX_NAME_LEN];
+            int q;
+            fscanf(fp, "&s%d", nome_ricetta, &q);
+            ordine(magazzino, ordini_completati, ordini_in_attesa, nome_ricetta, q );
+            
         }
 
         else if(strcmp(stringa, "rifornimento")==0){
@@ -217,6 +232,7 @@ int main (){
                 inserisci_in_heap(heap, scadenza, quantita);
                 printf("Rifornito %s con %d unità, scadenza %d\n", ingrediente, quantita, scadenza);
             }
+            processa_ordini_in_attesa(magazzino, ordini_completati, ordini_in_attesa);
         }
 
         istante++;
@@ -240,6 +256,188 @@ int main (){
 
     return 0;
 }
+
+
+//------------------------------------------------------------------------------------------------------
+//implementazione funzioni ordini
+
+Coda* crea_coda(){
+    Coda* coda = (Coda*)malloc (sizeof(Coda));
+    coda->primo_ord=coda->ultimo_ord=NULL;
+    coda->size=0;
+    return coda;
+}
+
+void enqueue(Coda* coda, char* nome_ricetta, int q, int istante){
+    Ordine* nuovo_ordine= (Ordine*) malloc(sizeof(Ordine));
+    strcpy(nuovo_ordine->nome_ricetta, nome_ricetta);
+    nuovo_ordine->q=q;
+    nuovo_ordine->istante=istante;
+    nuovo_ordine->next=NULL;
+    if(coda->ultimo_ord==NULL){
+        coda->primo_ord=coda->ultimo_ord=nuovo_ordine;
+    } else{
+        coda->ultimo_ord->next=nuovo_ordine;
+        coda->ultimo_ord=nuovo_ordine;
+    }
+    coda->size++;
+
+}
+Ordine* dequeue(Coda* coda){
+    if(coda->primo_ord==NULL){
+        return NULL;
+    }
+    Ordine* temp=coda->primo_ord;
+    coda->primo_ord= coda->primo_ord->next;
+    if(coda->primo_ord==NULL){
+        coda->ultimo_ord=NULL;
+    }
+    coda->size--;
+    return temp;
+
+}
+void rimuovi_scaduti(MinHeap* heap, int istante) {
+    while (heap->size > 0 && heap->array[0].scadenza <= istante) {
+        minimo(heap);
+    }
+}
+
+int processa_ordine(HashTable* magazzino, char* ingrediente, int quantita) {
+    MinHeap* heap = getHeap(magazzino, ingrediente);
+    if (!heap) {
+        return 0;
+    }
+    rimuovi_scaduti(heap, istante);
+
+    int totale = 0;
+    while (heap->size > 0 && totale < quantita) {
+        Nodo_heap min = minimo(heap);
+        if (totale + min.q <= quantita) {
+            totale += min.q;
+        } else {
+            min.q -= (quantita - totale);
+            totale = quantita;
+            inserisci_in_heap(heap, min.scadenza, min.q);
+        }
+    }
+
+    return totale >= quantita;
+}
+
+int verifica_ordine(HashTable* magazzino, Ricetta* ricetta, int quantita) {
+    Ingrediente* ing = ricetta->ingredienti_ricetta;
+    while (ing != NULL) {
+        MinHeap* heap = getHeap(magazzino, ing->nome_ingrediente);
+        if (!heap) return 0;
+
+        rimuovi_scaduti(heap, istante);
+
+        int totale = 0;
+        int temp_size = heap->size;
+        Nodo_heap* temp_array = (Nodo_heap*)malloc(temp_size * sizeof(Nodo_heap));
+        memcpy(temp_array, heap->array, temp_size * sizeof(Nodo_heap));
+
+        while (temp_size > 0 && totale < ing->q * quantita) {
+            Nodo_heap min = temp_array[0];
+            if (totale + min.q <= ing->q * quantita) {
+                totale += min.q;
+                temp_size--;
+                memmove(temp_array, temp_array + 1, temp_size * sizeof(Nodo_heap));
+            } else {
+                totale += ing->q * quantita;
+                break;
+            }
+        }
+
+        free(temp_array);
+        if (totale < ing->q * quantita) return 0;
+        ing = ing->prossimo_ing;
+    }
+    return 1;
+}
+
+void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attesa, char* nome_ricetta, int quantita) {
+    if (!trova_ricetta(nome_ricetta)) {
+        printf("Ricetta non trovata: %s\n", nome_ricetta);
+        return;
+    }
+
+    Ricetta* ricetta = ht_r->table[hash(nome_ricetta)];
+    while (ricetta) {
+        if (strcmp(ricetta->nome_ricetta, nome_ricetta) == 0) break;
+        ricetta = ricetta->prossima_ricetta;
+    }
+
+    if (verifica_ordine(magazzino, ricetta, quantita)) {
+        Ingrediente* ing = ricetta->ingredienti_ricetta;
+        while (ing != NULL) {
+            processa_ordine(magazzino, ing->nome_ingrediente, ing->q * quantita);
+            ing = ing->prossimo_ing;
+        }
+        Ordine* nuovo_ordine = (Ordine*)malloc(sizeof(Ordine));
+        strcpy(nuovo_ordine->nome_ricetta, nome_ricetta);
+        nuovo_ordine->q = quantita;
+        nuovo_ordine->next = NULL;
+
+        if (ordini_completati->ultimo_ord == NULL) {
+            ordini_completati->primo_ord = ordini_completati->ultimo_ord = nuovo_ordine;
+        } else {
+            ordini_completati->ultimo_ord->next = nuovo_ordine;
+            ordini_completati->ultimo_ord = nuovo_ordine;
+        }
+        ricetta->counter++;
+        printf("Ordine completato: %s x%d\n", nome_ricetta, quantita);
+    } else {
+        enqueue(ordini_in_attesa, nome_ricetta, quantita, istante);
+        printf("Ordine in attesa: %s x%d\n", nome_ricetta, quantita);
+    }
+}
+
+void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attesa) {
+    Ordine* curr = ordini_in_attesa->primo_ord;
+    Ordine* prec = NULL;
+    while (curr != NULL) {
+        if (trova_ricetta(curr->nome_ricetta)) {
+            Ricetta* ricetta = ht_r->table[hash(curr->nome_ricetta)];
+            while (ricetta) {
+                if (strcmp(ricetta->nome_ricetta, curr->nome_ricetta) == 0) break;
+                ricetta = ricetta->prossima_ricetta;
+            }
+            if (verifica_ordine(magazzino, ricetta, curr->q)) {
+                Ingrediente* ing = ricetta->ingredienti_ricetta;
+                while (ing != NULL) {
+                    processa_ordine(magazzino, ing->nome_ingrediente, ing->q * curr->q);
+                    ing = ing->prossimo_ing;
+                }
+                if (prec == NULL) {
+                    ordini_in_attesa->primo_ord = curr->next;
+                } else {
+                    prec->next = curr->next;
+                }
+                if (curr == ordini_in_attesa->ultimo_ord) {
+                    ordini_in_attesa->ultimo_ord = prec;
+                }
+                curr->next = NULL;
+                if (ordini_completati->ultimo_ord == NULL) {
+                    ordini_completati->primo_ord = ordini_completati->ultimo_ord = curr;
+                } else {
+                    ordini_completati->ultimo_ord->next = curr;
+                    ordini_completati->ultimo_ord = curr;
+                }
+                curr = (prec == NULL) ? ordini_in_attesa->primo_ord : prec->next;
+                printf("Ordine completato dall'attesa: %s x%d\n", curr->nome_ricetta, curr->q);
+            } else {
+                prec = curr;
+                curr = curr->next;
+            }
+        } else {
+            printf("Ricetta non trovata per l'ordine in attesa: %s\n", curr->nome_ricetta);
+            prec = curr;
+            curr = curr->next;
+        }
+    }
+}
+
 
 //------------------------------------------------------------------------------------------------------
 //implementazioni funzioni magazzino
@@ -465,7 +663,7 @@ void rimuovi_ricetta(char* nome){
         printf("ricetta non trovata\n");
         return;
     }
-    if(current->counter==0){
+    if(current->counter!=0){
         printf("ordini in sospeso\n");
         return;
     }
@@ -480,10 +678,3 @@ void rimuovi_ricetta(char* nome){
         return;
     }    
 }
-
-     //aggiorna tempo corrente--> forse non conviene scartare subito i prodotti scaduti ma conviene 
-       //lasciarli dove sono e quando vengono incontrati in seguito si verifica se sono da scartare
-        /* 
-        chiama una delle seguenti funzioni e modifica le strutture dati:
-
-        */
