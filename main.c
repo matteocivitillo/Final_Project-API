@@ -49,7 +49,6 @@ passaggi da seguire:
 #define HASH_TABLE_LEN 2081
 #define MAX_NAME_LEN 256
 //magazzino
-#define MAX_NAME_LEN 256
 #define CAP_INIZIALE 128
 #define HASH_TABLE_M_LEN 10007
 
@@ -142,15 +141,19 @@ int processa_ordine(HashTable* , char* , int );
 int verifica_ordine(HashTable* , Ricetta* , int);
 void ordine(HashTable* , Coda* , Coda* , char* , int );
 
+//prototipo funzioni per spedizione ordini
+void spedisci_ordini(Coda*, int);
+int partizione(Ordine**, int, int);
+void quickSort(Ordine**, int, int);
 
 
 //variabili globali
 int frequenza_camion=0; 
 int capienza_camion=0;
 int istante=0;
-HashTable_r* ht_r;
-Coda* ordini_in_attesa;
-Coda* ordini_completati;
+HashTable_r* ht_r=NULL;
+Coda* ordini_in_attesa=NULL;
+Coda* ordini_completati=NULL;
 
 
 int main (){
@@ -166,10 +169,15 @@ int main (){
     ht_r=crea_hashTable();
     HashTable* magazzino = creaHashTable(HASH_TABLE_M_LEN);
 
+    ordini_in_attesa=crea_coda();
+    ordini_completati=crea_coda();
 
 
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
+        if(istante % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
+            spedisci_ordini(ordini_completati, capienza_camion);
+        }
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
@@ -205,7 +213,7 @@ int main (){
 
         else if(strcmp(stringa, "rimuovi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
-            fscanf(fp, "%s", &nome_ricetta);
+            fscanf(fp, "%s", nome_ricetta);
             rimuovi_ricetta(nome_ricetta);
             printf("rimossa ricetta: %s\n", nome_ricetta);
         }
@@ -214,7 +222,7 @@ int main (){
             char nome_ricetta[MAX_NAME_LEN];
             int q;
             fscanf(fp, "&s%d", nome_ricetta, &q);
-            ordine(magazzino, ordini_completati, ordini_in_attesa, nome_ricetta, q );
+            ordine(magazzino, ordini_completati, ordini_in_attesa, nome_ricetta, q);
             
         }
 
@@ -253,8 +261,94 @@ int main (){
     }
     free(magazzino->puntatore_array);
     free(magazzino);
+    Ordine *ordine_attuale = ordini_completati->primo_ord;
+    while (ordine_attuale != NULL) {
+        Ordine *temp = ordine_attuale;
+        ordine_attuale = ordine_attuale->next;
+        free(temp);
+    }
+    free(ordini_completati);
+
+    ordine_attuale = ordini_in_attesa->primo_ord;
+    while (ordine_attuale != NULL) {
+        Ordine *temp = ordine_attuale;
+        ordine_attuale = ordine_attuale->next;
+        free(temp);
+    }
+    free(ordini_in_attesa);
 
     return 0;
+}
+
+
+//-----------------------------------------------------------------------------------------------------
+//implementazione funzioni spedizione
+void spedisci_ordini(Coda* ordini_completati, int capienza){
+    Ordine** selezionati = (Ordine**) malloc(capienza * sizeof(Ordine*));
+    int totale_peso = 0;
+    int num_selezionati = 0;
+    // Estrae gli ordini dalla coda fino a esaurire la capienza
+    while (ordini_completati->primo_ord != NULL && totale_peso < capienza) {
+        Ordine* ordine_corrente = dequeue(ordini_completati);
+        if (totale_peso + ordine_corrente->q <= capienza) {
+            selezionati[num_selezionati++] = ordine_corrente;
+            totale_peso += ordine_corrente->q;
+        } else { // Se l'ordine corrente non può essere completamente aggiunto, lo re-inseriamo in testa
+            ordine_corrente->next = ordini_completati->primo_ord;
+            ordini_completati->primo_ord = ordine_corrente;
+            if (ordini_completati->ultimo_ord == NULL) {
+                ordini_completati->ultimo_ord = ordine_corrente;
+            }
+            break;
+        }
+    }
+    // Ordina gli ordini selezionati in ordine decrescente per peso usando QuickSort
+    quickSort(selezionati, 0, num_selezionati - 1);
+
+    // Stampa e rimuove gli ordini selezionati, decrementando il contatore della ricetta
+    printf("Ordini selezionati per la spedizione:\n");
+    for (int i = 0; i < num_selezionati; i++) {
+        printf("Ordine: %s x%d\n", selezionati[i]->nome_ricetta, selezionati[i]->q);
+        // Decrementa il contatore della ricetta
+        unsigned int hash_val = hash(selezionati[i]->nome_ricetta);
+        Ricetta* ricetta_corrente = ht_r->table[hash_val];
+        while (ricetta_corrente != NULL) {
+            if (strcmp(ricetta_corrente->nome_ricetta, selezionati[i]->nome_ricetta) == 0) {
+                ricetta_corrente->counter--;
+                break;
+            }
+            ricetta_corrente = ricetta_corrente->prossima_ricetta;
+        }
+        free(selezionati[i]);
+    }
+    free(selezionati);
+}
+
+int partizione(Ordine** array, int minore, int maggiore){
+    Ordine* pivot = array[maggiore];
+    int i= minore-1;
+    for(int j= minore; j<maggiore;j++){
+        if(array[j]->q > pivot->q){
+            i++;
+            Ordine* temp = array[i];
+            array[i]=array[j];
+            array[j]=temp;
+        }
+    }
+    Ordine* temp = array[i+1];
+    array[i+1]=array[maggiore];
+    array[maggiore]=temp;
+    return i+1;
+}
+
+void quickSort(Ordine** array, int min, int max){
+    if(min<max){
+        int part= partizione(array, min, max);
+        quickSort(array, min, part-1);
+        quickSort(array, part+1, max);
+    }
+
+
 }
 
 
