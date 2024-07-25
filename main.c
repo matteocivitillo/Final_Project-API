@@ -101,6 +101,7 @@ typedef struct ordine{
     int q;
     int istante;
     struct ordine* next;
+    int peso_tot;
 } Ordine;
 
 typedef struct coda{
@@ -485,6 +486,7 @@ void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attes
         strcpy(nuovo_ordine->nome_ricetta, nome_ricetta);
         nuovo_ordine->q = quantita;
         nuovo_ordine->istante=istante;
+        nuovo_ordine->peso_tot= (quantita * ricetta->peso_tot);
         nuovo_ordine->next = NULL;
 
         if (ordini_completati->ultimo_ord == NULL) {
