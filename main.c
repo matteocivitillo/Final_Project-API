@@ -151,7 +151,7 @@ void quickSort(Ordine**, int, int);
 //variabili globali
 int frequenza_camion=0; 
 int capienza_camion=0;
-int istante=1;
+int istante=0;
 HashTable_r* ht_r=NULL;
 Coda* ordini_in_attesa=NULL;
 Coda* ordini_completati=NULL;
@@ -165,6 +165,7 @@ int main (){
     }
     fscanf(fp,"%d", &frequenza_camion);
     fscanf(fp,"%d", &capienza_camion);
+    printf("freq camion %d con capacità %d", frequenza_camion, capienza_camion);
     char stringa[MAX_NAME_LEN];
 
     ht_r=crea_hashTable();
@@ -177,11 +178,13 @@ int main (){
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
         if(istante!= 0){
-            if (istante % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
-            printf("%d %d", istante, frequenza_camion);
+            if(istante % frequenza_camion ==0){
+             //se l'istante è un multiplo della frequenza del camion 
+        
             spedisci_ordini(ordini_completati, capienza_camion);
             }
         }
+
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
@@ -218,16 +221,13 @@ int main (){
         else if(strcmp(stringa, "rimuovi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
             fscanf(fp, "%s", nome_ricetta);
-            printf("istante prima di rimuovi ricetta: %d\n", istante);
             rimuovi_ricetta(nome_ricetta);
-            printf("istante dopo di rimuovi ricetta: %d\n", istante);
-
         }
 
         else if(strcmp(stringa, "ordine")==0){
             char nome_ricetta[MAX_NAME_LEN];
             int q;
-            fscanf(fp, "&s%d", nome_ricetta, &q);
+            fscanf(fp, "%s%d", nome_ricetta, &q);
             ordine(magazzino, ordini_completati, ordini_in_attesa, nome_ricetta, q);
             
         }
@@ -236,7 +236,8 @@ int main (){
             char ingrediente [MAX_NAME_LEN];
             int quantita; 
             int scadenza;
-            while (fscanf (fp, "%s%d%d", ingrediente, &quantita, &scadenza)==3)
+            long pos_iniziale = ftell(fp);
+            while (fscanf (fp, "%s%d%d ", ingrediente, &quantita, &scadenza)==3)
             {
                 MinHeap* heap =getHeap(magazzino, ingrediente);
                 if(heap==NULL) {
@@ -244,8 +245,9 @@ int main (){
                     inserisci_in_table(magazzino, ingrediente, heap);
                 }
                 inserisci_in_heap(heap, scadenza, quantita);
-                
+                pos_iniziale=ftell(fp);
             }
+            fseek(fp, pos_iniziale, SEEK_SET);
             printf("rifornito\n");
             processa_ordini_in_attesa(magazzino, ordini_completati, ordini_in_attesa);
         }
