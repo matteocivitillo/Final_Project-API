@@ -339,29 +339,28 @@ void spedisci_ordini(Coda* ordini_completati, int capienza){
 
 int partizione(Ordine** array, int minore, int maggiore){
     Ordine* pivot = array[maggiore];
-    int i= minore-1;
-    for(int j= minore; j<maggiore;j++){
-        if(array[j]->q > pivot->q){
+    int i = minore - 1;
+    for(int j = minore; j < maggiore; j++){
+        // Confronta per peso e in caso di parità di peso, confronta per istante di arrivo
+        if(array[j]->q > pivot->q || (array[j]->q == pivot->q && array[j]->istante < pivot->istante)){
             i++;
             Ordine* temp = array[i];
-            array[i]=array[j];
-            array[j]=temp;
+            array[i] = array[j];
+            array[j] = temp;
         }
     }
-    Ordine* temp = array[i+1];
-    array[i+1]=array[maggiore];
-    array[maggiore]=temp;
-    return i+1;
+    Ordine* temp = array[i + 1];
+    array[i + 1] = array[maggiore];
+    array[maggiore] = temp;
+    return i + 1;
 }
 
 void quickSort(Ordine** array, int min, int max){
-    if(min<max){
-        int part= partizione(array, min, max);
-        quickSort(array, min, part-1);
-        quickSort(array, part+1, max);
+    if(min < max){
+        int part = partizione(array, min, max);
+        quickSort(array, min, part - 1);
+        quickSort(array, part + 1, max);
     }
-
-
 }
 
 
