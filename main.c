@@ -254,6 +254,7 @@ int main (){
 
         istante++;
     }
+    spedisci_ordini(ordini_completati, capienza_camion);
     fclose(fp);
 
     //deallocazione memoria
@@ -484,6 +485,7 @@ void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attes
         Ordine* nuovo_ordine = (Ordine*)malloc(sizeof(Ordine));
         strcpy(nuovo_ordine->nome_ricetta, nome_ricetta);
         nuovo_ordine->q = quantita;
+        nuovo_ordine->istante=istante;
         nuovo_ordine->next = NULL;
 
         if (ordini_completati->ultimo_ord == NULL) {
