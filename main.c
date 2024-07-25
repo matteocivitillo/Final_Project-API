@@ -117,7 +117,7 @@ void inserisci_ricetta(char*, Ingrediente*);
 void rimuovi_ricetta(char*);
 
 //prototipo funzioni magazzino
-unsigned int hash (char*);
+unsigned int hash_m (char*);
 MinHeap* creaHeap (int);
 void swap(Nodo_heap*, Nodo_heap*);
 int padre(int);
@@ -131,6 +131,7 @@ HashTable* creaHashTable (int);
 HashNode* creaNodoHash (char*, MinHeap*);
 void inserisci_in_table(HashTable*, char*, MinHeap*);
 MinHeap* getHeap (HashTable*, char*);
+void processa_ordini_in_attesa(HashTable* , Coda* , Coda* );
 
 //prototipo funzioni ordini
 Coda* crea_coda();
@@ -150,7 +151,7 @@ void quickSort(Ordine**, int, int);
 //variabili globali
 int frequenza_camion=0; 
 int capienza_camion=0;
-int istante=0;
+int tempo=0;
 HashTable_r* ht_r=NULL;
 Coda* ordini_in_attesa=NULL;
 Coda* ordini_completati=NULL;
@@ -175,8 +176,11 @@ int main (){
 
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
-        if(istante % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
+        if(tempo != 0){
+            if (tempo % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
+            printf("%d %d", tempo, frequenza_camion);
             spedisci_ordini(ordini_completati, capienza_camion);
+            }
         }
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
@@ -215,7 +219,6 @@ int main (){
             char nome_ricetta[MAX_NAME_LEN];
             fscanf(fp, "%s", nome_ricetta);
             rimuovi_ricetta(nome_ricetta);
-            printf("rimossa ricetta: %s\n", nome_ricetta);
         }
 
         else if(strcmp(stringa, "ordine")==0){
@@ -238,12 +241,13 @@ int main (){
                     inserisci_in_table(magazzino, ingrediente, heap);
                 }
                 inserisci_in_heap(heap, scadenza, quantita);
-                printf("Rifornito %s con %d unità, scadenza %d\n", ingrediente, quantita, scadenza);
+                
             }
+            printf("rifornito\n");
             processa_ordini_in_attesa(magazzino, ordini_completati, ordini_in_attesa);
         }
 
-        istante++;
+        tempo++;
     }
     fclose(fp);
 
@@ -284,6 +288,10 @@ int main (){
 //-----------------------------------------------------------------------------------------------------
 //implementazione funzioni spedizione
 void spedisci_ordini(Coda* ordini_completati, int capienza){
+    if(ordini_completati->primo_ord==NULL){
+        printf("camioncino vuoto\n");
+        return;
+    }
     Ordine** selezionati = (Ordine**) malloc(capienza * sizeof(Ordine*));
     int totale_peso = 0;
     int num_selezionati = 0;
@@ -306,9 +314,8 @@ void spedisci_ordini(Coda* ordini_completati, int capienza){
     quickSort(selezionati, 0, num_selezionati - 1);
 
     // Stampa e rimuove gli ordini selezionati, decrementando il contatore della ricetta
-    printf("Ordini selezionati per la spedizione:\n");
     for (int i = 0; i < num_selezionati; i++) {
-        printf("Ordine: %s x%d\n", selezionati[i]->nome_ricetta, selezionati[i]->q);
+        printf("%d %s %d\n", selezionati[i]->istante, selezionati[i]->nome_ricetta, selezionati[i]->q);
         // Decrementa il contatore della ricetta
         unsigned int hash_val = hash(selezionati[i]->nome_ricetta);
         Ricetta* ricetta_corrente = ht_r->table[hash_val];
@@ -401,7 +408,7 @@ int processa_ordine(HashTable* magazzino, char* ingrediente, int quantita) {
     if (!heap) {
         return 0;
     }
-    rimuovi_scaduti(heap, istante);
+    rimuovi_scaduti(heap, tempo);
 
     int totale = 0;
     while (heap->size > 0 && totale < quantita) {
@@ -424,7 +431,7 @@ int verifica_ordine(HashTable* magazzino, Ricetta* ricetta, int quantita) {
         MinHeap* heap = getHeap(magazzino, ing->nome_ingrediente);
         if (!heap) return 0;
 
-        rimuovi_scaduti(heap, istante);
+        rimuovi_scaduti(heap, tempo);
 
         int totale = 0;
         int temp_size = heap->size;
@@ -452,9 +459,10 @@ int verifica_ordine(HashTable* magazzino, Ricetta* ricetta, int quantita) {
 
 void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attesa, char* nome_ricetta, int quantita) {
     if (!trova_ricetta(nome_ricetta)) {
-        printf("Ricetta non trovata: %s\n", nome_ricetta);
+        printf("rifiutato\n");
         return;
     }
+    printf("accettato\n");
 
     Ricetta* ricetta = ht_r->table[hash(nome_ricetta)];
     while (ricetta) {
@@ -480,10 +488,8 @@ void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attes
             ordini_completati->ultimo_ord = nuovo_ordine;
         }
         ricetta->counter++;
-        printf("Ordine completato: %s x%d\n", nome_ricetta, quantita);
     } else {
-        enqueue(ordini_in_attesa, nome_ricetta, quantita, istante);
-        printf("Ordine in attesa: %s x%d\n", nome_ricetta, quantita);
+        enqueue(ordini_in_attesa, nome_ricetta, quantita, tempo);
     }
 }
 
@@ -519,12 +525,12 @@ void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Co
                     ordini_completati->ultimo_ord = curr;
                 }
                 curr = (prec == NULL) ? ordini_in_attesa->primo_ord : prec->next;
-                printf("Ordine completato dall'attesa: %s x%d\n", curr->nome_ricetta, curr->q);
             } else {
                 prec = curr;
                 curr = curr->next;
             }
         } else {
+            //controllare se serve
             printf("Ricetta non trovata per l'ordine in attesa: %s\n", curr->nome_ricetta);
             prec = curr;
             curr = curr->next;
@@ -536,7 +542,7 @@ void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Co
 //------------------------------------------------------------------------------------------------------
 //implementazioni funzioni magazzino
 
-unsigned int hash(char* nome) {
+unsigned int hash_m(char* nome) {
     unsigned long hash = 5381;
     int c;
     while ((c = *nome++)) {
@@ -653,7 +659,7 @@ char* strdup(const char* s) {
 
 
 void inserisci_in_table(HashTable* hashtable, char* chiave , MinHeap* valore){
-    unsigned long val_hash =hash(chiave);
+    unsigned long val_hash =hash_m(chiave);
     HashNode* nuovo_nodo = creaNodoHash(chiave, valore);
     if(hashtable->puntatore_array[val_hash]==NULL){
         hashtable->puntatore_array[val_hash]=nuovo_nodo;
@@ -670,7 +676,7 @@ void inserisci_in_table(HashTable* hashtable, char* chiave , MinHeap* valore){
 
 
 MinHeap* getHeap (HashTable* hashtable, char* chiave){
-    unsigned long val_hash = hash (chiave);
+    unsigned long val_hash = hash_m(chiave);
     HashNode* nodo = hashtable->puntatore_array[val_hash];
     while (nodo!= NULL)
     {
@@ -709,7 +715,7 @@ void inserisci_ricetta(char* nome, Ingrediente* ingredienti){
     unsigned int val_hash= hash(nome);
     //verifica che la ricetta non sia presente prima di inserirla
     if(trova_ricetta(nome)){
-        printf("ricetta gia presente, comando ignorato\n");
+        printf("ignorato\n");
         return;
     }    
     Ricetta* nuova_ricetta= (Ricetta*) malloc(sizeof(Ricetta));
@@ -726,7 +732,7 @@ void inserisci_ricetta(char* nome, Ingrediente* ingredienti){
     //inserimento in testa
     nuova_ricetta->prossima_ricetta=ht_r->table[val_hash];
     ht_r->table[val_hash]= nuova_ricetta;
-    printf("aggiunta ricetta: %s, con peso %d\n", nuova_ricetta->nome_ricetta, nuova_ricetta->counter );
+    printf("aggiunta\n");
 }
 
 
@@ -754,7 +760,7 @@ void rimuovi_ricetta(char* nome){
     }
     if(current==NULL){
         //non ho trovato la ricetta da eliminare
-        printf("ricetta non trovata\n");
+        printf("non presente\n");
         return;
     }
     if(current->counter!=0){
@@ -765,10 +771,12 @@ void rimuovi_ricetta(char* nome){
         //sono in testa alla lista
         ht_r->table[val_hash]=current->prossima_ricetta;
         free(current);
+        printf("rimossa\n");
         return;
     } else {
         prec->prossima_ricetta= current->prossima_ricetta;
         free(current);
+        printf("rimossa\n");
         return;
     }    
 }
