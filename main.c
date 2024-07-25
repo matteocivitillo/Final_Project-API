@@ -151,7 +151,7 @@ void quickSort(Ordine**, int, int);
 //variabili globali
 int frequenza_camion=0; 
 int capienza_camion=0;
-int tempo=0;
+int istante=1;
 HashTable_r* ht_r=NULL;
 Coda* ordini_in_attesa=NULL;
 Coda* ordini_completati=NULL;
@@ -176,9 +176,9 @@ int main (){
 
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
-        if(tempo != 0){
-            if (tempo % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
-            printf("%d %d", tempo, frequenza_camion);
+        if(istante!= 0){
+            if (istante % frequenza_camion ==0){ //se l'istante è un multiplo della frequenza del camion 
+            printf("%d %d", istante, frequenza_camion);
             spedisci_ordini(ordini_completati, capienza_camion);
             }
         }
@@ -218,7 +218,10 @@ int main (){
         else if(strcmp(stringa, "rimuovi_ricetta")==0){
             char nome_ricetta[MAX_NAME_LEN];
             fscanf(fp, "%s", nome_ricetta);
+            printf("istante prima di rimuovi ricetta: %d\n", istante);
             rimuovi_ricetta(nome_ricetta);
+            printf("istante dopo di rimuovi ricetta: %d\n", istante);
+
         }
 
         else if(strcmp(stringa, "ordine")==0){
@@ -247,7 +250,7 @@ int main (){
             processa_ordini_in_attesa(magazzino, ordini_completati, ordini_in_attesa);
         }
 
-        tempo++;
+        istante++;
     }
     fclose(fp);
 
@@ -408,7 +411,7 @@ int processa_ordine(HashTable* magazzino, char* ingrediente, int quantita) {
     if (!heap) {
         return 0;
     }
-    rimuovi_scaduti(heap, tempo);
+    rimuovi_scaduti(heap, istante);
 
     int totale = 0;
     while (heap->size > 0 && totale < quantita) {
@@ -431,7 +434,7 @@ int verifica_ordine(HashTable* magazzino, Ricetta* ricetta, int quantita) {
         MinHeap* heap = getHeap(magazzino, ing->nome_ingrediente);
         if (!heap) return 0;
 
-        rimuovi_scaduti(heap, tempo);
+        rimuovi_scaduti(heap, istante);
 
         int totale = 0;
         int temp_size = heap->size;
@@ -489,7 +492,7 @@ void ordine(HashTable* magazzino, Coda* ordini_completati, Coda* ordini_in_attes
         }
         ricetta->counter++;
     } else {
-        enqueue(ordini_in_attesa, nome_ricetta, quantita, tempo);
+        enqueue(ordini_in_attesa, nome_ricetta, quantita, istante);
     }
 }
 
