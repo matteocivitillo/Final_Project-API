@@ -159,14 +159,13 @@ Coda* ordini_completati=NULL;
 
 
 int main (){
-    FILE *fp= fopen("istruzioni.txt", "r");
+    FILE *fp= fopen("open1.txt", "r");
     if(fp==NULL){
         printf("errore nell'apertura del file");
         return 1;
     }
     fscanf(fp,"%d", &frequenza_camion);
     fscanf(fp,"%d", &capienza_camion);
-    printf("freq camion %d con capacità %d\n", frequenza_camion, capienza_camion);
     char stringa[MAX_NAME_LEN];
 
     ht_r=crea_hashTable();
@@ -257,7 +256,10 @@ int main (){
 
         istante++;
     }
-    spedisci_ordini(ordini_completati, capienza_camion);
+    
+    if(istante % frequenza_camion ==0){        
+        spedisci_ordini(ordini_completati, capienza_camion);
+    }
     fclose(fp);
 
     //deallocazione memoria
@@ -307,7 +309,7 @@ void spedisci_ordini(Coda* ordini_completati, int capienza){
     int totale_peso = 0;
     int num_selezionati = 0;
     // Estrae gli ordini dalla coda fino a esaurire la capienza
-    while (ordini_completati->primo_ord != NULL && totale_peso < capienza) {
+    while (ordini_completati->primo_ord != NULL && totale_peso <= capienza) { //-------- totale peso < o <= capienza?
         Ordine* ordine_corrente = dequeue(ordini_completati);
         if (totale_peso + ordine_corrente->peso_tot <= capienza) {
             selezionati[num_selezionati++] = ordine_corrente;
