@@ -42,6 +42,8 @@ passaggi da seguire:
 */
 
 
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -144,7 +146,7 @@ int verifica_ordine(HashTable* , Ricetta* , int);
 void ordine(HashTable* , Coda* , Coda* , char* , int );
 
 //prototipo funzioni per spedizione ordini
-void spedisci_ordini(Coda*, int);
+void spedisci_ordini(Coda*, int, Coda*);
 int partizione(Ordine**, int, int);
 void quickSort(Ordine**, int, int);
 
@@ -178,12 +180,13 @@ int main (){
     //ciclo while che finche il file contiene stringhe continua a leggere
     while (fscanf(fp, "%s", stringa)!= EOF){
         if(istante!= 0){
-            if(istante % frequenza_camion ==0){
+            if(istante % frequenza_camion == 0){
              //se l'istante è un multiplo della frequenza del camion 
         
-            spedisci_ordini(ordini_completati, capienza_camion);
+            spedisci_ordini(ordini_completati, capienza_camion, ordini_in_attesa);
             }
         }
+
 
 
         if(strcmp(stringa, "aggiungi_ricetta")==0){
@@ -258,7 +261,7 @@ int main (){
     }
     
     if(istante % frequenza_camion ==0){        
-        spedisci_ordini(ordini_completati, capienza_camion);
+        spedisci_ordini(ordini_completati, capienza_camion, ordini_in_attesa);
     }
     fclose(fp);
 
@@ -300,7 +303,7 @@ int main (){
 
 //-----------------------------------------------------------------------------------------------------
 //implementazione funzioni spedizione
-void spedisci_ordini(Coda* ordini_completati, int capienza){
+void spedisci_ordini(Coda* ordini_completati, int capienza, Coda* ordini_in_attesa){
     if(ordini_completati->primo_ord==NULL){
         printf("camioncino vuoto\n");
         return;
@@ -541,6 +544,8 @@ void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Co
                     temp_prec = temp;
                     temp = temp->next;
                 }
+                
+                //printf(" debug: %d %d %d\n ",temp_prec->istante, curr->istante, temp->istante);
 
                 if (temp_prec == NULL) {
                     curr->next = ordini_completati->primo_ord;
