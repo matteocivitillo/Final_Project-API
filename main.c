@@ -114,7 +114,7 @@ typedef struct coda{
 unsigned int hash(char*);
 HashTable_r* crea_hashTable();
 int trova_ricetta(char*);
-void inserisci_ricetta(char*, Ingrediente*);
+void inserisci_ricetta(char*, Ingrediente*, int);
 void rimuovi_ricetta(char*);
 
 //prototipo funzioni magazzino
@@ -166,7 +166,7 @@ int main (){
     }
     fscanf(fp,"%d", &frequenza_camion);
     fscanf(fp,"%d", &capienza_camion);
-    printf("freq camion %d con capacità %d", frequenza_camion, capienza_camion);
+    printf("freq camion %d con capacità %d\n", frequenza_camion, capienza_camion);
     char stringa[MAX_NAME_LEN];
 
     ht_r=crea_hashTable();
@@ -194,9 +194,11 @@ int main (){
             Ingrediente* ultimo= NULL;
             char nome_ingrediente[MAX_NAME_LEN];
             int q;
+            int peso_ricetta=0;
 
             while(fscanf(fp, "%s", nome_ingrediente)==1){
                 fscanf(fp,"%d", &q);
+                peso_ricetta += q;
                 Ingrediente* nuovo_ingrediente= (Ingrediente*)malloc(sizeof(Ingrediente));
                 strcpy(nuovo_ingrediente->nome_ingrediente, nome_ingrediente);
                 nuovo_ingrediente->q=q;
@@ -216,7 +218,7 @@ int main (){
                 }
                 
             }
-            inserisci_ricetta(nome_ricetta, primo); 
+            inserisci_ricetta(nome_ricetta, primo, peso_ricetta); 
         }
 
         else if(strcmp(stringa, "rimuovi_ricetta")==0){
@@ -292,6 +294,8 @@ int main (){
 }
 
 
+//peso ordine è sbagliato
+
 //-----------------------------------------------------------------------------------------------------
 //implementazione funzioni spedizione
 void spedisci_ordini(Coda* ordini_completati, int capienza){
@@ -305,9 +309,9 @@ void spedisci_ordini(Coda* ordini_completati, int capienza){
     // Estrae gli ordini dalla coda fino a esaurire la capienza
     while (ordini_completati->primo_ord != NULL && totale_peso < capienza) {
         Ordine* ordine_corrente = dequeue(ordini_completati);
-        if (totale_peso + ordine_corrente->q <= capienza) {
+        if (totale_peso + ordine_corrente->peso_tot <= capienza) {
             selezionati[num_selezionati++] = ordine_corrente;
-            totale_peso += ordine_corrente->q;
+            totale_peso += ordine_corrente->peso_tot;
         } else { // Se l'ordine corrente non può essere completamente aggiunto, lo re-inseriamo in testa
             ordine_corrente->next = ordini_completati->primo_ord;
             ordini_completati->primo_ord = ordine_corrente;
@@ -343,7 +347,7 @@ int partizione(Ordine** array, int minore, int maggiore){
     int i = minore - 1;
     for(int j = minore; j < maggiore; j++){
         // Confronta per peso e in caso di parità di peso, confronta per istante di arrivo
-        if(array[j]->q > pivot->q || (array[j]->q == pivot->q && array[j]->istante < pivot->istante)){
+        if(array[j]->peso_tot > pivot->peso_tot || (array[j]->peso_tot == pivot->peso_tot && array[j]->istante < pivot->istante)){
             i++;
             Ordine* temp = array[i];
             array[i] = array[j];
@@ -512,6 +516,7 @@ void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Co
                 ricetta = ricetta->prossima_ricetta;
             }
             if (verifica_ordine(magazzino, ricetta, curr->q)) {
+                curr->peso_tot=curr->q * ricetta->peso_tot;
                 Ingrediente* ing = ricetta->ingredienti_ricetta;
                 while (ing != NULL) {
                     processa_ordine(magazzino, ing->nome_ingrediente, ing->q * curr->q);
@@ -719,7 +724,7 @@ HashTable_r* crea_hashTable(){
     return ht;
 }
 
-void inserisci_ricetta(char* nome, Ingrediente* ingredienti){
+void inserisci_ricetta(char* nome, Ingrediente* ingredienti, int peso_ric){
     unsigned int val_hash= hash(nome);
     //verifica che la ricetta non sia presente prima di inserirla
     if(trova_ricetta(nome)){
@@ -728,14 +733,8 @@ void inserisci_ricetta(char* nome, Ingrediente* ingredienti){
     }    
     Ricetta* nuova_ricetta= (Ricetta*) malloc(sizeof(Ricetta));
     strcpy(nuova_ricetta->nome_ricetta, nome); //copio il nome
+    nuova_ricetta->peso_tot=peso_ric;
     Ingrediente* current = ingredienti; 
-    int counter=0;
-    while (current!=NULL)
-    {
-        counter+= current->q;
-        current=current->prossimo_ing;
-    }
-    nuova_ricetta->counter=counter;
     nuova_ricetta->ingredienti_ricetta=ingredienti; //passo il puntatore
     //inserimento in testa
     nuova_ricetta->prossima_ricetta=ht_r->table[val_hash];
