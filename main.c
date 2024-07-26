@@ -159,7 +159,7 @@ Coda* ordini_completati=NULL;
 
 
 int main (){
-    FILE *fp= fopen("open1.txt", "r");
+    FILE *fp= fopen("open4.txt", "r");
     if(fp==NULL){
         printf("errore nell'apertura del file");
         return 1;
@@ -532,14 +532,30 @@ void processa_ordini_in_attesa(HashTable* magazzino, Coda* ordini_completati, Co
                 if (curr == ordini_in_attesa->ultimo_ord) {
                     ordini_in_attesa->ultimo_ord = prec;
                 }
-                curr->next = NULL;
-                if (ordini_completati->ultimo_ord == NULL) {
-                    ordini_completati->primo_ord = ordini_completati->ultimo_ord = curr;
+                curr->next=NULL;
+                
+                Ordine* temp = ordini_completati->primo_ord;
+                Ordine* temp_prec = NULL;
+
+                while (temp != NULL && temp->istante < curr->istante) {
+                    temp_prec = temp;
+                    temp = temp->next;
+                }
+
+                if (temp_prec == NULL) {
+                    curr->next = ordini_completati->primo_ord;
+                    ordini_completati->primo_ord = curr;
                 } else {
-                    ordini_completati->ultimo_ord->next = curr;
+                    curr->next = temp_prec->next;
+                    temp_prec->next = curr;
+                }
+
+                if (temp == NULL) {
                     ordini_completati->ultimo_ord = curr;
                 }
+
                 curr = (prec == NULL) ? ordini_in_attesa->primo_ord : prec->next;
+
             } else {
                 prec = curr;
                 curr = curr->next;
