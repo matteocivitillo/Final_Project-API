@@ -62,5 +62,5 @@ ordine torta_paradiso 36
 ## Author
 Matteo Civitillo,
 
-Developed as part of the **Final Exam of Algorithms and Data Structures (2023-2024)**.
+developed as part of the **Final Exam of Algorithms and Data Structures (2023-2024)**.
 
